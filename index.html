@@ -8,7 +8,7 @@
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Unbounded:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
   
   <!-- React & Babel for in-browser compiling -->
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -22,7 +22,7 @@
     body { margin: 0; padding: 0; background: #030305; overflow-x: hidden; }
     @media (pointer: fine) { body { cursor: none; } }
     
-    /* Noise texture for that extra realistic glass background feel */
+    /* Noise texture */
     body::before {
       content: "";
       position: fixed;
@@ -278,7 +278,7 @@
     }
 
     /* =========================================================================
-       VIBRANT INTERACTIVE GALAXY STAR CANVAS COMPONENT
+       GALAXY STARDUST & SHOOTING STAR CANVAS COMPONENT
     ========================================================================= */
     function GalaxyStarsCanvas() {
       const canvasRef = useRef(null);
@@ -298,35 +298,56 @@
         };
         window.addEventListener('resize', handleResize);
 
-        let mouse = { x: -1000, y: -1000 };
+        let mouse = { x: -1000, y: -1000, prevX: -1000, prevY: -1000, isMoving: false };
         const handleMouseMove = (e) => {
+          mouse.prevX = mouse.x;
+          mouse.prevY = mouse.y;
           mouse.x = e.clientX;
           mouse.y = e.clientY;
+          mouse.isMoving = true;
+
+          // Trigger a shooting star when cursor sweeps across stardust
+          if (Math.random() < 0.25) {
+            shootingStars.push({
+              x: e.clientX,
+              y: e.clientY,
+              length: Math.random() * 80 + 40,
+              speed: Math.random() * 12 + 8,
+              angle: Math.random() * Math.PI * 2,
+              opacity: 1
+            });
+          }
         };
+
         const handleMouseLeave = () => {
           mouse.x = -1000;
           mouse.y = -1000;
+          mouse.isMoving = false;
         };
+
         window.addEventListener('mousemove', handleMouseMove);
         document.addEventListener('mouseleave', handleMouseLeave);
 
-        // Vibrant Galaxy Colors
+        // Stardust & Galaxy particle configuration
         const colors = ['#f472b6', '#c084fc', '#38bdf8', '#2dd4bf', '#ffffff'];
-        const starCount = Math.floor((width * height) / 8000); 
+        const starCount = Math.floor((width * height) / 6000); 
         const stars = [];
+        const shootingStars = [];
 
         for (let i = 0; i < starCount; i++) {
-          const baseRadius = Math.random() * 2.5 + 0.5;
+          const isDust = Math.random() > 0.4; // 60% white stardust, 40% colorful galaxy stars
+          const baseRadius = isDust ? Math.random() * 1.5 + 0.3 : Math.random() * 2.5 + 0.8;
           stars.push({
             x: Math.random() * width,
             y: Math.random() * height,
             radius: baseRadius,
             originalRadius: baseRadius,
-            color: colors[Math.floor(Math.random() * colors.length)],
-            vx: (Math.random() - 0.5) * 0.2,
-            vy: (Math.random() - 0.5) * 0.2,
-            pulseSpeed: Math.random() * 0.05 + 0.01,
-            pulseOffset: Math.random() * 10
+            color: isDust ? '#ffffff' : colors[Math.floor(Math.random() * colors.length)],
+            vx: (Math.random() - 0.5) * 0.15,
+            vy: (Math.random() - 0.5) * 0.15,
+            pulseSpeed: Math.random() * 0.04 + 0.01,
+            pulseOffset: Math.random() * 10,
+            alpha: isDust ? Math.random() * 0.6 + 0.2 : Math.random() * 0.8 + 0.2
           });
         }
 
@@ -335,6 +356,7 @@
           time += 0.03;
           ctx.clearRect(0, 0, width, height);
 
+          // Render & update stars / stardust
           stars.forEach((s) => {
             s.x += s.vx;
             s.y += s.vy;
@@ -344,31 +366,61 @@
             if (s.y < 0) s.y = height;
             if (s.y > height) s.y = 0;
 
+            // Repulsion from UFO cursor
             const dx = mouse.x - s.x;
             const dy = mouse.y - s.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
-            const repelRadius = 120;
+            const repelRadius = 100;
 
             if (dist < repelRadius) {
               const force = (repelRadius - dist) / repelRadius;
               const angle = Math.atan2(dy, dx);
-              s.x -= Math.cos(angle) * force * 4;
-              s.y -= Math.sin(angle) * force * 4;
+              s.x -= Math.cos(angle) * force * 5;
+              s.y -= Math.sin(angle) * force * 5;
             }
 
-            const pulse = Math.sin(time * s.pulseSpeed * 10 + s.pulseOffset) * 0.4 + 1;
+            const pulse = Math.sin(time * s.pulseSpeed * 10 + s.pulseOffset) * 0.3 + 1;
             const currentRadius = s.originalRadius * pulse;
 
             ctx.save();
             ctx.beginPath();
             ctx.arc(s.x, s.y, currentRadius, 0, Math.PI * 2);
             ctx.fillStyle = s.color;
-            ctx.shadowBlur = 12;
+            ctx.shadowBlur = s.color === '#ffffff' ? 8 : 14;
             ctx.shadowColor = s.color;
-            ctx.globalAlpha = dist < repelRadius ? 1 : 0.7;
+            ctx.globalAlpha = dist < repelRadius ? 1 : s.alpha;
             ctx.fill();
             ctx.restore();
           });
+
+          // Render & update shooting stars triggered by cursor
+          for (let i = shootingStars.length - 1; i >= 0; i--) {
+            const ss = shootingStars[i];
+            ss.x += Math.cos(ss.angle) * ss.speed;
+            ss.y += Math.sin(ss.angle) * ss.speed;
+            ss.opacity -= 0.03;
+
+            if (ss.opacity <= 0) {
+              shootingStars.splice(i, 1);
+              continue;
+            }
+
+            ctx.save();
+            ctx.beginPath();
+            const tailX = ss.x - Math.cos(ss.angle) * ss.length;
+            const tailY = ss.y - Math.sin(ss.angle) * ss.length;
+            const grad = ctx.createLinearGradient(ss.x, ss.y, tailX, tailY);
+            grad.addColorStop(0, 'rgba(255, 255, 255, 1)');
+            grad.addColorStop(0.5, 'rgba(56, 189, 248, 0.8)');
+            grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+            
+            ctx.strokeStyle = grad;
+            ctx.lineWidth = 2;
+            ctx.moveTo(ss.x, ss.y);
+            ctx.lineTo(tailX, tailY);
+            ctx.stroke();
+            ctx.restore();
+          }
 
           animId = requestAnimationFrame(render);
         };
@@ -387,41 +439,32 @@
     }
 
     /* =========================================================================
-       ANIMATION PRIMITIVES
+       CUSTOM UFO CURSOR
     ========================================================================= */
-    function CustomCursor() {
+    function UFOCursor() {
       const cursorRef = useRef(null);
-      const ringRef = useRef(null);
-      
+
       useEffect(() => {
         const onMouseMove = (e) => {
-          if (cursorRef.current && ringRef.current) {
+          if (cursorRef.current) {
             cursorRef.current.style.transform = `translate3d(${e.clientX}px, ${e.clientY}px, 0)`;
-            ringRef.current.style.transform = `translate3d(${e.clientX}px, ${e.clientY}px, 0)`;
           }
         };
-        const onMouseDown = () => ringRef.current?.classList.add('clicking');
-        const onMouseUp = () => ringRef.current?.classList.remove('clicking');
-        
         window.addEventListener('mousemove', onMouseMove);
-        window.addEventListener('mousedown', onMouseDown);
-        window.addEventListener('mouseup', onMouseUp);
-        
-        return () => {
-          window.removeEventListener('mousemove', onMouseMove);
-          window.removeEventListener('mousedown', onMouseDown);
-          window.removeEventListener('mouseup', onMouseUp);
-        };
+        return () => window.removeEventListener('mousemove', onMouseMove);
       }, []);
 
       return (
-        <>
-          <div ref={cursorRef} className="custom-cursor-dot" />
-          <div ref={ringRef} className="custom-cursor-ring" />
-        </>
+        <div ref={cursorRef} className="ufo-cursor-wrap">
+          <div className="ufo-icon">🛸</div>
+          <div className="ufo-beam" />
+        </div>
       );
     }
 
+    /* =========================================================================
+       ANIMATION PRIMITIVES
+    ========================================================================= */
     function Reveal({ children, delay = 0, y = 40, style = {}, as = "div", className = "" }) {
       const [ref, visible] = useInView(0.12);
       const reduced = usePrefersReducedMotion();
@@ -610,14 +653,14 @@
       return (
         <div className={`portfolio-root ${mounted ? 'is-mounted' : ''}`}>
           <GlobalStyles />
-          <CustomCursor />
+          <UFOCursor />
           <GalaxyStarsCanvas />
           
           <div className="scroll-progress" style={{ width: `${progress}%` }} />
 
           {/* DYNAMIC ISLAND NAVIGATION */}
           <nav className={`dynamic-island ${scrolled ? 'is-scrolled' : ''}`}>
-            <div className="ufo-mascot" title="Take me to your leader!">🛸</div>
+            <div className="island-ufo-badge" title="Deep space active">🛸</div>
             <div className="island-links">
               {NAV_LINKS.map((n) => (
                 <button 
@@ -746,7 +789,7 @@
     }
 
     /* =========================================================================
-       GLOBAL STYLES (Galaxy / Dynamic Island Style)
+       GLOBAL STYLES
     ========================================================================= */
     function GlobalStyles() {
       return (
@@ -764,12 +807,36 @@
           .portfolio-root * { box-sizing: border-box; }
           .container { max-width: 1120px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 2; }
           
-          /* Custom Cursor */
-          .custom-cursor-dot { position: fixed; top: 0; left: 0; width: 8px; height: 8px; background: #fff; border-radius: 50%; pointer-events: none; z-index: 9999; transform: translate3d(-50%, -50%, 0); transition: width 0.2s, height 0.2s; box-shadow: 0 0 15px rgba(255, 255, 255, 0.8); }
-          .custom-cursor-ring { position: fixed; top: -15px; left: -15px; width: 38px; height: 38px; border: 1.5px solid rgba(255, 255, 255, 0.5); border-radius: 50%; pointer-events: none; z-index: 9998; transition: transform 0.1s ease-out, width 0.2s, height 0.2s, top 0.2s, left 0.2s; mix-blend-mode: overlay; }
-          .custom-cursor-ring.clicking { width: 26px; height: 26px; top: -9px; left: -9px; background: rgba(255, 255, 255, 0.2); }
-          a:hover ~ .custom-cursor-ring, button:hover ~ .custom-cursor-ring { width: 56px; height: 56px; top: -24px; left: -24px; background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.8); backdrop-filter: blur(4px); }
-          @media (max-width: 768px) { .custom-cursor-dot, .custom-cursor-ring { display: none; } }
+          /* UFO Custom Cursor with Beam */
+          .ufo-cursor-wrap {
+            position: fixed;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            z-index: 9999;
+            transform: translate3d(-50%, -50%, 0);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+          }
+          .ufo-icon {
+            font-size: 30px;
+            filter: drop-shadow(0 0 10px rgba(56, 189, 248, 0.8));
+            animation: ufoFloat 2s ease-in-out infinite;
+          }
+          .ufo-beam {
+            width: 25px;
+            height: 40px;
+            background: linear-gradient(to bottom, rgba(45, 212, 191, 0.4), transparent);
+            clip-path: polygon(30% 0%, 70% 0%, 100% 100%, 0% 100%);
+            margin-top: -4px;
+            opacity: 0.7;
+          }
+          @keyframes ufoFloat {
+            0%, 100% { transform: translateY(0) rotate(-3deg); }
+            50% { transform: translateY(-4px) rotate(3deg); }
+          }
+          @media (max-width: 768px) { .ufo-cursor-wrap { display: none; } }
 
           /* Dynamic Island Navigation */
           .dynamic-island {
@@ -778,21 +845,30 @@
             left: 50%;
             transform: translateX(-50%);
             z-index: 9000;
-            background: rgba(15, 15, 20, 0.65);
+            background: rgba(15, 15, 20, 0.7);
             backdrop-filter: blur(24px) saturate(180%);
             -webkit-backdrop-filter: blur(24px) saturate(180%);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.12);
             border-radius: 999px;
-            padding: 8px 12px;
+            padding: 8px 16px;
             display: flex;
             align-items: center;
+            gap: 12px;
             box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255,255,255,0.1);
             transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
           }
           .dynamic-island.is-scrolled {
             top: 16px;
-            padding: 6px 10px;
+            padding: 6px 12px;
             background: rgba(10, 10, 15, 0.85);
+          }
+          .island-ufo-badge {
+            font-size: 18px;
+            animation: spinUfo 6s linear infinite;
+          }
+          @keyframes spinUfo {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
           }
           .island-links {
             display: flex;
@@ -801,11 +877,11 @@
           .island-link {
             background: transparent;
             border: none;
-            color: rgba(255, 255, 255, 0.6);
+            color: rgba(255, 255, 255, 0.65);
             font-family: 'Plus Jakarta Sans';
             font-weight: 600;
             font-size: 14px;
-            padding: 10px 18px;
+            padding: 8px 16px;
             border-radius: 999px;
             cursor: pointer;
             outline: none;
@@ -813,31 +889,13 @@
           }
           .island-link:hover, .island-link.active {
             color: #fff;
-            background: rgba(255, 255, 255, 0.1);
-            box-shadow: inset 0 1px 3px rgba(255, 255, 255, 0.1);
-          }
-          
-          /* UFO Mascot Animation */
-          .ufo-mascot {
-            position: absolute;
-            top: -26px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 28px;
-            animation: floatUFO 4s ease-in-out infinite;
-            filter: drop-shadow(0 4px 10px rgba(45, 212, 191, 0.6));
-            cursor: pointer;
-            z-index: 9001;
-          }
-          @keyframes floatUFO {
-            0%, 100% { transform: translate(-50%, 0) rotate(-5deg); }
-            50% { transform: translate(-50%, -12px) rotate(5deg); }
+            background: rgba(255, 255, 255, 0.12);
+            box-shadow: inset 0 1px 3px rgba(255, 255, 255, 0.15);
           }
           
           @media (max-width: 768px) {
-            .dynamic-island { width: 90%; justify-content: center; top: 16px; overflow-x: auto; scrollbar-width: none; }
-            .island-link { font-size: 13px; padding: 8px 12px; }
-            .ufo-mascot { font-size: 22px; top: -20px; }
+            .dynamic-island { width: 92%; justify-content: center; top: 16px; overflow-x: auto; scrollbar-width: none; }
+            .island-link { font-size: 13px; padding: 6px 10px; }
           }
 
           /* Spring Hover Animation Utility */
@@ -845,7 +903,7 @@
           .hover-spring:hover { transform: scale(1.05) translateY(-2px); }
           .hover-spring:active { transform: scale(0.95); transition: transform 0.1s; }
 
-          /* Liquid Glass Class (Translucent Galaxy Panels) */
+          /* Liquid Glass Panels */
           .liquid-glass-clear {
             background: rgba(255, 255, 255, 0.04);
             backdrop-filter: blur(25px) saturate(150%);
@@ -901,20 +959,20 @@
           
           .glass-badge { font-weight: 700; font-size: 13.5px; color: #fff; padding: 10px 20px; text-shadow: 0 1px 3px rgba(0,0,0,0.4); }
           
-          /* Vibrant Galaxy Name Text Effect */
+          /* Refined Galactic Typography for Ayu Nadia Irawan */
           .hero-title { 
-            font-family: 'Unbounded'; 
+            font-family: 'Syne', sans-serif; 
             font-weight: 800; 
-            font-size: clamp(48px, 7vw, 92px); 
+            font-size: clamp(44px, 6.5vw, 86px); 
             line-height: 1.1; 
             margin: 0 0 24px; 
-            background: linear-gradient(100deg, #f472b6, #c084fc, #38bdf8, #2dd4bf);
+            background: linear-gradient(135deg, #ffffff 20%, #f472b6 50%, #c084fc 75%, #38bdf8 100%);
             background-size: 200% auto;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            animation: galaxyShine 6s linear infinite;
-            letter-spacing: -1.5px; 
-            text-shadow: 0 10px 40px rgba(192, 132, 252, 0.3); 
+            animation: galaxyShine 8s linear infinite;
+            letter-spacing: -1px; 
+            text-shadow: 0 10px 40px rgba(192, 132, 252, 0.25); 
           }
           @keyframes galaxyShine { to { background-position: 200% center; } }
           
@@ -924,13 +982,13 @@
           /* Sections & Layout */
           .section { padding: 120px 0; position: relative; z-index: 2; }
           .text-center { text-align: center; }
-          .section-title { font-family: 'Unbounded'; font-size: clamp(32px, 4vw, 48px); margin: 0 0 60px; color: #fff; font-weight: 800; letter-spacing: -1px; text-shadow: 0 4px 20px rgba(0,0,0,0.4); }
+          .section-title { font-family: 'Syne', sans-serif; font-size: clamp(32px, 4vw, 48px); margin: 0 0 60px; color: #fff; font-weight: 800; letter-spacing: -1px; text-shadow: 0 4px 20px rgba(0,0,0,0.4); }
 
           /* Marquee */
           .marquee-wrap { overflow: hidden; padding: 24px 0; transform: rotate(-2deg) scale(1.05); margin: 40px 0; border-radius: 0 !important; background: rgba(255,255,255,0.03); }
           .marquee-track { display: flex; width: max-content; animation: marquee 30s linear infinite; }
           @keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
-          .marquee-item { display: inline-flex; align-items: center; font-family: 'Unbounded'; font-weight: 700; font-size: 18px; color: #fff; padding: 0 30px; white-space: nowrap; text-shadow: 0 2px 10px rgba(0,0,0,0.4); }
+          .marquee-item { display: inline-flex; align-items: center; font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 18px; color: #fff; padding: 0 30px; white-space: nowrap; text-shadow: 0 2px 10px rgba(0,0,0,0.4); }
           .marquee-dot { width: 8px; height: 8px; margin-left: 30px; }
 
           /* Filter Segmented Control */
@@ -951,8 +1009,8 @@
           .project-card:hover .frame-inner img { transform: scale(1.08); }
           .project-card-content { padding: 20px; display: flex; flex-direction: column; gap: 16px; flex: 1; }
           .cat-tag { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; font-size: 13.5px; font-weight: 800; text-shadow: 0 1px 2px rgba(0,0,0,0.6); }
-          .card-metric { font-family: 'Unbounded'; font-weight: 800; font-size: 16px; color: #fff; padding: 8px 16px; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
-          .project-card-content h3 { margin: 0; font-family: 'Unbounded'; font-weight: 700; font-size: 20px; line-height: 1.4; color: #fff; text-shadow: 0 2px 5px rgba(0,0,0,0.4); }
+          .card-metric { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 16px; color: #fff; padding: 8px 16px; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+          .project-card-content h3 { margin: 0; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 20px; line-height: 1.4; color: #fff; text-shadow: 0 2px 5px rgba(0,0,0,0.4); }
           .project-org { margin: -6px 0 0; font-size: 14px; color: rgba(255,255,255,0.6); font-weight: 700; }
           .project-summary { margin: 0; font-size: 15px; line-height: 1.7; color: rgba(255,255,255,0.8); }
           .tool-chip { font-size: 12.5px; font-weight: 700; padding: 8px 18px; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.4); }
@@ -962,7 +1020,7 @@
           .project-ext-link:hover { background: rgba(255,255,255,0.15); border-color: rgba(255,255,255,0.3); }
           
           .locked-panel { padding: 80px 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; background: rgba(0,0,0,0.6); text-align: center; }
-          .locked-panel span { font-family: 'Unbounded'; font-weight: 700; font-size: 15px; color: #fff; text-shadow: 0 2px 5px rgba(0,0,0,0.5); }
+          .locked-panel span { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 15px; color: #fff; text-shadow: 0 2px 5px rgba(0,0,0,0.5); }
 
           /* Timeline */
           .timeline-center { position: relative; max-width: 960px; margin: 0 auto; padding: 40px 0; }
@@ -976,7 +1034,7 @@
           .timeline-icon { position: absolute; top: -20px; background: linear-gradient(135deg, #c084fc, #38bdf8); width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 20px rgba(56, 189, 248, 0.4), inset 0 2px 5px rgba(255,255,255,0.4); border: 2px solid rgba(255,255,255,0.5); z-index: 3; }
           .timeline-item.left .timeline-icon { right: -60px; }
           .timeline-item.right .timeline-icon { left: -60px; }
-          .timeline-content h3 { margin: 0; font-family: 'Unbounded'; font-weight: 700; font-size: 19px; color: #fff; text-shadow: 0 2px 5px rgba(0,0,0,0.4); }
+          .timeline-content h3 { margin: 0; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 19px; color: #fff; text-shadow: 0 2px 5px rgba(0,0,0,0.4); }
           .timeline-content .exp-org { margin: 8px 0 20px; font-size: 14.5px; color: #e0e7ff; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; }
           .timeline-content ul { margin: 0; padding: 0; list-style: none; font-size: 15px; line-height: 1.7; color: rgba(255,255,255,0.8); }
           .timeline-content li { margin-bottom: 10px; position: relative; }
@@ -1000,7 +1058,7 @@
           .cert-card { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 24px 28px; text-decoration: none; }
           .cert-icon-wrap { width: 50px; height: 50px; border-radius: 16px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: inset 0 2px 5px rgba(255,255,255,0.1); }
           .cert-content { flex: 1; }
-          .cert-content h4 { margin: 0; font-family: 'Unbounded'; font-weight: 700; font-size: 16px; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.4); }
+          .cert-content h4 { margin: 0; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 16px; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.4); }
           .cert-content p { margin: 6px 0 0; font-size: 14px; color: rgba(255,255,255,0.6); font-weight: 600; }
           .cert-arrow { color: rgba(255,255,255,0.8); transition: transform 0.3s; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4)); }
           .cert-card:hover .cert-arrow { transform: translate(4px, -4px) scale(1.1); color: #fff; }
@@ -1017,7 +1075,7 @@
           .lightbox-inner { max-width: 1000px; width: 100%; border-radius: 36px; overflow: hidden; padding: 12px; }
           .lightbox-inner img { width: 100%; display: block; border-radius: 24px; border: 1px solid rgba(255,255,255,0.15); }
           .lightbox-caption { display: flex; justify-content: space-between; align-items: center; padding: 24px 12px 12px; }
-          .lightbox-caption p { margin: 0; font-family: 'Unbounded'; font-weight: 700; font-size: 18px; color: #fff; text-shadow: 0 2px 5px rgba(0,0,0,0.5); }
+          .lightbox-caption p { margin: 0; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 18px; color: #fff; text-shadow: 0 2px 5px rgba(0,0,0,0.5); }
           .lightbox-caption button { border: none; color: #fff; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; cursor: pointer; background: rgba(255,255,255,0.1); border-radius: 50%; transition: all 0.3s; }
           .lightbox-caption button:hover { background: rgba(255,255,255,0.2); transform: scale(1.1); }
         `}</style>
